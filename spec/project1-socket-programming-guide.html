@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en"> 
+  <head> 
+    <meta charset="UTF-8" /> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /> 
+    <title>CS 6378 Project 1 — Socket Programming Survival Guide</title> 
+    <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121934;
+      --panel-2: #182142;
+      --ink: #eef2ff;
+      --muted: #b8c2e5;
+      --line: #2a376e;
+      --accent: #79c0ff;
+      --accent-2: #7ee787;
+      --warn: #ffd866;
+      --danger: #ff8e8e;
+      --shadow: 0 18px 50px rgba(0,0,0,.28);
+      --radius: 20px;
+      --mono: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(121,192,255,.18), transparent 30%),
+        radial-gradient(circle at top right, rgba(126,231,135,.12), transparent 24%),
+        linear-gradient(180deg, #0a1020 0%, #0f1630 100%);
+      line-height: 1.6;
+    }
+
+    .page {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 32px auto 80px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, rgba(121,192,255,.13), rgba(126,231,135,.08));
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 28px;
+      padding: 34px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -80px -80px auto;
+      width: 240px;
+      height: 240px;
+      background: radial-gradient(circle, rgba(126,231,135,.24), transparent 66%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(121,192,255,.12);
+      color: var(--accent);
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 16px;
+      border: 1px solid rgba(121,192,255,.28);
+    }
+
+    h1, h2, h3 { line-height: 1.15; margin: 0 0 14px; }
+    h1 { font-size: clamp(2.2rem, 5vw, 4rem); max-width: 12ch; }
+    h2 { font-size: clamp(1.4rem, 2.3vw, 2rem); margin-top: 8px; }
+    h3 { font-size: 1.05rem; }
+    p { margin: 0 0 14px; color: var(--muted); }
+    strong { color: var(--ink); }
+
+    .lede {
+      max-width: 75ch;
+      font-size: 1.05rem;
+    }
+
+    .meta-grid,
+    .cards,
+    .triptych,
+    .two-col,
+    .check-grid,
+    .pitfall-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .meta-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 28px; }
+    .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .triptych { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .two-col { grid-template-columns: 1.15fr .85fr; }
+    .check-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pitfall-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .card, .section {
+      background: rgba(18,25,52,.86);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .card {
+      padding: 18px;
+      min-height: 100%;
+    }
+
+    .section {
+      padding: 28px;
+      margin-top: 22px;
+    }
+
+    .stat {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    .label {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    ul, ol { margin: 10px 0 0 20px; padding: 0; }
+    li { margin: 8px 0; color: var(--muted); }
+    li strong { color: var(--ink); }
+
+    code, pre {
+      font-family: var(--mono);
+      font-size: .95em;
+    }
+
+    code {
+      background: rgba(255,255,255,.06);
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+
+    pre {
+      background: #0c1329;
+      color: #dce6ff;
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 16px;
+      padding: 16px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      margin: 14px 0 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      overflow: hidden;
+      border-radius: 16px;
+      background: rgba(255,255,255,.02);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 14px 16px;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    th {
+      color: var(--ink);
+      background: rgba(255,255,255,.04);
+      font-size: .95rem;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    td { color: var(--muted); }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: rgba(121,192,255,.08);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-top: 16px;
+    }
+
+    .callout.warn {
+      border-left-color: var(--warn);
+      background: rgba(255,216,102,.08);
+    }
+
+    .callout.good {
+      border-left-color: var(--accent-2);
+      background: rgba(126,231,135,.08);
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .chip {
+      padding: 7px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.09);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-size: .92rem;
+    }
+
+    .step-number {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: inline-grid;
+      place-items: center;
+      background: rgba(121,192,255,.16);
+      color: var(--accent);
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .footer-note {
+      margin-top: 28px;
+      padding-top: 14px;
+      border-top: 1px dashed rgba(255,255,255,.12);
+      font-size: .95rem;
+    }
+
+    .mini {
+      font-size: .94rem;
+      color: var(--muted);
+    }
+
+    .mono-list li { font-family: var(--mono); }
+
+    @media (max-width: 980px) {
+      .meta-grid, .cards, .triptych, .two-col, .check-grid, .pitfall-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero { padding: 26px; }
+      .section { padding: 22px; }
+    }
+
+    @media print {
+      body {
+        background: white;
+        color: #111827;
+      }
+      .page { width: 100%; margin: 0; }
+      .hero, .card, .section {
+        box-shadow: none;
+        background: white;
+        color: #111827;
+        border-color: #d1d5db;
+      }
+      p, li, td, .mini, .chip { color: #374151; }
+      .eyebrow, .label, .stat, h1, h2, h3, strong { color: #111827; }
+      code, pre { background: #f3f4f6; color: #111827; }
+      .callout, .callout.warn, .callout.good { background: #f9fafb; }
+    }
+  </style> 
+  </head> 
+  <body> 
+    <main class="page"> 
+      <section class="hero"> 
+        <div class="eyebrow">
+           CS 6378 · Advanced Operating Systems · Project 1 
+        </div> 
+        <h1>Socket Programming Survival Guide</h1> 
+        <p class="lede"> This guide is for students building the Project 1 peer-to-peer file-sharing system. It does <strong>not</strong> hand you a canned solution. It gives you the engineering shape of a strong solution: how to structure the system, how to think about sockets, what state to keep, where concurrency matters, and where students usually lose points. </p> 
+        <div class="meta-grid"> 
+          <div class="card"> 
+            <div class="label">
+               Part I 
+            </div> 
+            <div class="stat">
+               Mar 22 
+            </div> 
+            <p>Build the initial overlay from the adjacency matrix and prove the graph is connected.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="label">
+               Part II 
+            </div> 
+            <div class="stat">
+               Mar 29 
+            </div> 
+            <p>Flood searches, suppress duplicates, route replies back, and transfer files correctly.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="label">
+               Part III 
+            </div> 
+            <div class="stat">
+               Apr 5 
+            </div> 
+            <p>Support node arrival and graceful departure without leaving the overlay inconsistent.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="label">
+               Submission 
+            </div> 
+            <div class="stat">
+               Solo 
+            </div> 
+            <p>Code, makefile, performance logs, design document, and AI-usage disclosure in one archive.</p> 
+          </div> 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>What the instructor actually wants</h2> 
+        <div class="cards"> 
+          <div class="card"> 
+            <h3>1. A real overlay</h3> 
+            <p>Not a simulation inside one process. You are expected to run <strong>one node per machine</strong> on the designated dc machines and connect them with <strong>stream sockets</strong>.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>2. Concurrency</h3> 
+            <p>The network creation protocol should not be lazily sequential. A design that creates many links in parallel will score better than one that walks the graph slowly.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>3. Protocol design</h3> 
+            <p>You must explain your <strong>message formats</strong>, <strong>module boundaries</strong>, <strong>routing behavior</strong>, and <strong>cleanup strategy</strong> in the design document.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>4. Engineering discipline</h3> 
+            <p>You are allowed to use AI, but you are still responsible for understanding every line and cleanly separating human-written, AI-assisted, and AI-generated code.</p> 
+          </div> 
+        </div> 
+        <div class="callout warn"> <strong>Important:</strong> the assignment is not just about file transfer. It is equally about <strong>distributed protocol design</strong>, <strong>state management</strong>, <strong>correct forwarding</strong>, and <strong>clean demonstrations</strong>. 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>A sane system model</h2> 
+        <div class="triptych"> 
+          <div class="card"> 
+            <div class="step-number">
+               A 
+            </div> 
+            <h3>Overlay layer</h3> 
+            <p>Maintains TCP neighbor connections implied by <code>Adj</code>, handles join/leave updates, and provides send/receive primitives to upper layers.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               B 
+            </div> 
+            <h3>Search layer</h3> 
+            <p>Creates unique search requests, enforces hop-count rules, forwards each request at most once, and routes replies back along the reverse path.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               C 
+            </div> 
+            <h3>File layer</h3> 
+            <p>Checks the local share list <code>F_i</code>, serves file downloads, updates local file visibility after successful copies, and blocks unsafe departure.</p> 
+          </div> 
+        </div> 
+        <div class="chip-row"> <span class="chip">Keep overlay logic separate from search logic</span> <span class="chip">Treat file transfer as a separate protocol</span> <span class="chip">Log everything that affects correctness</span> <span class="chip">Expire stale search state</span> 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>Part-by-part roadmap</h2> 
+        <div class="triptych"> 
+          <div class="card"> 
+            <h3>Part I — Build the graph first</h3> 
+            <ul> 
+              <li>Parse the global adjacency matrix and node-to-machine registry.</li> 
+              <li>Verify the graph is connected before trying to build anything.</li> 
+              <li>Use a deterministic connection rule to avoid duplicate TCP links.</li> 
+              <li>Bring up the full overlay concurrently, not one edge at a time.</li> 
+            </ul> 
+          </div> 
+          <div class="card"> 
+            <h3>Part II — Get search correct before optimizing</h3> 
+            <ul> 
+              <li>Define a unique request ID, for example <code>(originNode, sequenceNumber)</code>.</li> 
+              <li>Store the first neighbor that delivered each request.</li> 
+              <li>Forward each search request at most once.</li> 
+              <li>Ignore late replies after the initiator timer expires.</li> 
+            </ul> 
+          </div> 
+          <div class="card"> 
+            <h3>Part III — Join and leave without chaos</h3> 
+            <ul> 
+              <li>Update topology state in a clearly documented way.</li> 
+              <li>Wait for in-flight transfers to finish before departure.</li> 
+              <li>Refuse new positive search replies while departing.</li> 
+              <li>If attempting the bonus, reason carefully about partitions.</li> 
+            </ul> 
+          </div> 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>How to use the UTD dc machines without getting stuck</h2> 
+        <p> The assignment expects you to use the designated network-programming machines such as <code>dc01.utdallas.edu</code> through <code>dc45.utdallas.edu</code>, with <strong>one node per machine</strong>. For many students, this is the first real multi-machine workflow, so the safest approach is to set up access first, then worry about the distributed code. </p> 
+        <div class="two-col"> 
+          <div class="card"> 
+            <h3>Step 1 — Get SSH working</h3> 
+            <p>If you are on macOS, Linux, or WSL, generate an SSH key with:</p> 
+            <pre>ssh-keygen -t ed25519</pre> 
+            <p>Accept the default file location unless you know exactly why you want something else. This creates:</p> 
+            <ul class="mono-list"> 
+              <li><code>~/.ssh/id_ed25519</code> — your private key</li> 
+              <li><code>~/.ssh/id_ed25519.pub</code> — your public key</li> 
+            </ul> 
+            <div class="callout warn"> <strong>Critical:</strong> share <strong>only</strong> the public key. Never copy, upload, or send the private key anywhere. 
+            </div> 
+          </div> 
+          <div class="card"> 
+            <h3>Step 2 — Install the public key on a dc machine</h3> 
+            <p>The easiest method is usually:</p> 
+            <pre>ssh-copy-id -i ~/.ssh/id_ed25519.pub NetID@dc01.utdallas.edu</pre> 
+            <p>If that is unavailable, you can log in normally first and manually append the contents of your public key file on the remote side.</p> 
+            <p class="mini">After installation, test with <code>ssh NetID@dc01.utdallas.edu</code>. You may be asked for your key passphrase, which is normal.</p> 
+          </div> 
+        </div> 
+        <div class="cards"> 
+          <div class="card"> 
+            <h3>Step 3 — Build a machine map before coding</h3> 
+            <p>Create a small config file that maps logical nodes to actual hosts and ports, for example:</p> 
+            <pre>Node1  dc01.utdallas.edu  5001
+Node2  dc02.utdallas.edu  5002
+Node3  dc03.utdallas.edu  5003
+Node4  dc04.utdallas.edu  5004</pre> 
+            <p>This makes your registry explicit and keeps your design document cleaner.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Step 4 — Keep one terminal per node</h3> 
+            <p>For debugging, act like a distributed-systems engineer, not like someone hoping it will all work magically. Use one shell per remote node, or use <code>tmux</code> so each machine keeps running even if your laptop disconnects.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Step 5 — Compile and test remotely</h3> 
+            <p>Do not assume code that worked on your local machine behaves the same way across multiple remote hosts. Compile on the dc machines, verify ports, and test on at least a 3–4 node overlay early.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Step 6 — Log what runs where</h3> 
+            <p>Write down which process ran on which machine, with which node ID, port, and visible file list. This prevents confusion during the demo and when debugging reply routing.</p> 
+          </div> 
+        </div> 
+        <div class="callout good"> <strong>Recommended student workflow:</strong> first verify SSH access to several dc machines, then test a tiny two-node hello program, then test one overlay edge, then a small connected graph, and only after that attempt flooding and file transfer. 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>Socket programming essentials for this project</h2> 
+        <div class="two-col"> 
+          <div class="card"> 
+            <h3>The TCP pattern you need to internalize</h3> 
+            <pre>Passive side (server-ish)          Active side (client-ish)
+-------------------------------------------------------------
+socket()                           socket()
+bind()                             connect()
+listen()                           send()/recv()
+accept()                           close()
+send()/recv()
+close()</pre> 
+            <p class="mini">Every node will likely play both roles: it must accept neighbor/file-transfer connections and also initiate connections to neighbors or download peers.</p> 
+            <div class="callout good"> <strong>Practical recommendation:</strong> use one well-defined listening port per node for overlay control traffic, and either reuse the same connection carefully or create a separate, explicit transfer connection for file downloads. 
+            </div> 
+          </div> 
+          <div class="card"> 
+            <h3>Three socket mistakes that destroy distributed projects</h3> 
+            <ul> 
+              <li><strong>Assuming one <code>send()</code> equals one <code>recv()</code>.</strong> TCP is a byte stream, not a message queue.</li> 
+              <li><strong>Ignoring partial reads/writes.</strong> You must frame your messages.</li> 
+              <li><strong>Blocking the whole node on one connection.</strong> Use threads or <code>select()</code>/<code>poll()</code> so one slow peer does not freeze everything.</li> 
+            </ul> 
+          </div> 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>How to actually write the socket code</h2> 
+        <p> Students usually lose time here because they jump straight into the full P2P protocol before writing a tiny, correct socket layer. The right move is to build a small communication library first, then let the rest of the system use it. </p> 
+        <div class="two-col"> 
+          <div class="card"> 
+            <h3>Start with these helper functions</h3> 
+            <pre>int send_all(int fd, const void *buf, size_t len);
+int recv_all(int fd, void *buf, size_t len);
+int send_message(int fd, uint16_t type, const void *payload, uint32_t len);
+int recv_message(int fd, uint16_t *type, void **payload, uint32_t *len);</pre> 
+            <p class="mini">If these helpers are correct, your search, reply, join, leave, and download code becomes much simpler.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Use a fixed header</h3> 
+            <p>A tiny header keeps control messages predictable.</p> 
+            <pre>typedef struct {
+    uint16_t type;
+    uint32_t length;
+} MsgHeader;</pre> 
+            <p>Send the header first, then the payload. Use network byte order for multi-byte integers.</p> 
+          </div> 
+        </div> 
+        <div class="cards"> 
+          <div class="card"> 
+            <h3>Server-side skeleton</h3> 
+            <pre>listen_fd = socket(...);
+bind(listen_fd, ...);
+listen(listen_fd, backlog);
+
+while (1) {
+    conn_fd = accept(listen_fd, ...);
+    // hand off to a thread or event loop
+}</pre> 
+          </div> 
+          <div class="card"> 
+            <h3>Client-side skeleton</h3> 
+            <pre>fd = socket(...);
+connect(fd, ...);
+send_message(fd, TYPE_SEARCH_REQ, payload, len);
+recv_message(fd, &amp;type, &amp;payload, &amp;len);
+close(fd);</pre> 
+          </div> 
+          <div class="card"> 
+            <h3>Overlay reality</h3> 
+            <p>Each node is both a server and a client. It must accept inbound neighbor connections <em>and</em> initiate outbound ones according to your connection rule.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Transfer reality</h3> 
+            <p>File transfer is safer if treated as its own mini-protocol with metadata first, then exact byte counts, then closure and cleanup.</p> 
+          </div> 
+        </div> 
+        <div class="check-grid"> 
+          <div class="card"> 
+            <h3>What <code>send_all()</code> must do</h3> 
+            <ul> 
+              <li>Loop until every byte is sent or an error occurs.</li> 
+              <li>Handle short writes correctly.</li> 
+              <li>Return failure if the socket breaks mid-message.</li> 
+            </ul> 
+          </div> 
+          <div class="card"> 
+            <h3>What <code>recv_all()</code> must do</h3> 
+            <ul> 
+              <li>Loop until the requested byte count is fully read.</li> 
+              <li>Detect peer closure cleanly.</li> 
+              <li>Never assume one <code>recv()</code> call returns a whole header or payload.</li> 
+            </ul> 
+          </div> 
+        </div> 
+        <div class="callout warn"> <strong>The classic mistake:</strong> writing code like “call <code>recv()</code> once for the header, call it once for the payload, done.” That works until it doesn’t. TCP gives you a stream of bytes, not packet boundaries. 
+        </div> 
+        <div class="cards"> 
+          <div class="card"> 
+            <h3>Concurrency choice</h3> 
+            <p>At minimum, each node needs to handle multiple neighbors without letting one stalled connection freeze the process. Threads are usually easier for students; <code>select()</code> or <code>poll()</code> is also valid if done cleanly.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Error handling</h3> 
+            <p>Check every system call. If <code>socket()</code>, <code>bind()</code>, <code>listen()</code>, <code>accept()</code>, <code>connect()</code>, <code>send()</code>, or <code>recv()</code> fails, log the failure and decide whether to retry, abort that connection, or terminate the node.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Byte order</h3> 
+            <p>If your header contains integers, convert them with the usual host/network byte-order helpers so your protocol is explicit and portable.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Close sockets on all paths</h3> 
+            <p>Leaking file descriptors during failures or repeated searches will create weird bugs that look like distributed-systems failures but are really resource leaks.</p> 
+          </div> 
+        </div> 
+        <div class="callout good"> <strong>Recommended implementation order:</strong> first make a two-process echo or hello program work across two dc machines, then add a header, then add message types, then build the overlay on top of that. Do not start with flooding. 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>Use explicit message framing</h2> 
+        <p> Since you are using stream sockets, you need a message format that can be parsed unambiguously. Two clean approaches are common: </p> 
+        <div class="cards"> 
+          <div class="card"> 
+            <h3>Option 1 — Length-prefixed messages</h3> 
+            <p>Send a fixed-size header first, containing the message type and payload length, then send the payload bytes.</p> 
+            <p class="mini">Best for binary-safe protocols and file chunks.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Option 2 — Newline-delimited JSON</h3> 
+            <p>Each control message is one JSON object terminated by <code>\n</code>. Easier to debug, but you still need length framing for actual file chunks.</p> 
+            <p class="mini">Great for search, reply, join, and leave control traffic.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>What not to do</h3> 
+            <p>Do not invent a format that only works when messages arrive in one piece. Under real load, that assumption breaks fast.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Strong compromise</h3> 
+            <p>Use structured control messages for overlay/search management and a separate framed transfer protocol for file data.</p> 
+          </div> 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>Recommended control messages</h2> 
+        <table> 
+          <thead> 
+            <tr> 
+              <th>Message type</th> 
+              <th>Purpose</th> 
+              <th>Suggested fields</th> 
+            </tr> 
+          </thead> 
+          <tbody> 
+            <tr> 
+              <td><code>HELLO</code></td> 
+              <td>Neighbor handshake during overlay creation</td> 
+              <td>nodeId, host, port, protocolVersion</td> 
+            </tr> 
+            <tr> 
+              <td><code>SEARCH_REQ</code></td> 
+              <td>Flooded file search request</td> 
+              <td>requestId, originNode, filename, hopLimit, hopDistance, timestamp</td> 
+            </tr> 
+            <tr> 
+              <td><code>SEARCH_RESP</code></td> 
+              <td>Reply when a node has the file</td> 
+              <td>requestId, ownerNode, filename, ownerHost, ownerPort</td> 
+            </tr> 
+            <tr> 
+              <td><code>DOWNLOAD_REQ</code></td> 
+              <td>Initiate actual file transfer</td> 
+              <td>filename, requesterNode, optional byte range</td> 
+            </tr> 
+            <tr> 
+              <td><code>FILE_META</code></td> 
+              <td>Transfer metadata before file bytes</td> 
+              <td>filename, filesize, checksum, rangeStart, rangeEnd</td> 
+            </tr> 
+            <tr> 
+              <td><code>JOIN_REQ</code></td> 
+              <td>New node wants to enter through an existing node</td> 
+              <td>newNodeId, host, port, visibleFiles</td> 
+            </tr> 
+            <tr> 
+              <td><code>TOPOLOGY_UPDATE</code></td> 
+              <td>Propagate adjacency/registy changes</td> 
+              <td>changeType, nodeA, nodeB, updatedVersion</td> 
+            </tr> 
+            <tr> 
+              <td><code>LEAVE_NOTICE</code></td> 
+              <td>Graceful departure</td> 
+              <td>departingNode, effectiveTime, replacementEdges(optional)</td> 
+            </tr> 
+            <tr> 
+              <td><code>ACK</code> / <code>ERROR</code></td> 
+              <td>Protocol confirmation and debugging</td> 
+              <td>requestId, status, reason</td> 
+            </tr> 
+          </tbody> 
+        </table> 
+        <div class="callout"> <strong>Do not skip the request ID.</strong> It is the anchor for duplicate suppression, reverse-path routing, timeout cleanup, and debugging. 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>A design that earns points for concurrency</h2> 
+        <div class="check-grid"> 
+          <div class="card"> 
+            <h3>Deterministic connection initiation</h3> 
+            <p>If <code>Adj[i][j] = 1</code>, only one side should actively connect. A simple rule is:</p> 
+            <pre>If i &lt; j, Node i initiates TCP connect to Node j.
+If i &gt; j, Node i only accepts the incoming connection.</pre> 
+            <p class="mini">This avoids duplicate sockets while still allowing all edges to come up in parallel.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Parallel startup</h3> 
+            <p>Do not wait for one connection to finish before starting the next. Launch connection attempts to all eligible neighbors concurrently, and separately accept inbound connections.</p> 
+          </div> 
+        </div> 
+        <div class="callout good"> <strong>Why this matters:</strong> the project statement explicitly says a high-concurrency protocol will fetch more points, while a sequential setup will be penalized. 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>The search protocol that will actually work</h2> 
+        <ol> 
+          <li><strong>User searches at Node i.</strong> If the filename is already in <code>F_i</code>, serve locally.</li> 
+          <li><strong>Otherwise create a fresh request ID.</strong> Example: <code>requestId = i || localSequenceNumber</code>.</li> 
+          <li><strong>Initialize hop-count to 1.</strong> Flood the request only within that search radius.</li> 
+          <li><strong>Each node stores first arrival only.</strong> If a duplicate request arrives later, discard it.</li> 
+          <li><strong>Nodes with a matching file reply along the reverse path.</strong> They respond to the neighbor from which the first copy arrived.</li> 
+          <li><strong>Intermediate nodes forward replies using stored reverse-path state.</strong></li> 
+          <li><strong>The initiator collects replies until timeout.</strong> Display <code>(filename, node)</code> tuples and ignore late arrivals.</li> 
+          <li><strong>If no success, double hop-count.</strong> Retry until success or hop-count exceeds 16.</li> 
+        </ol> 
+        <pre>Search state per request at each node
+-------------------------------------
+requestId
+firstSeenTime
+parentNeighbor   # the first neighbor from which request arrived
+alreadyForwarded # boolean
+cleanupDeadline  # expire stale routing state</pre> 
+        <div class="callout warn"> <strong>Easy place to lose correctness:</strong> if you fail to remember the <em>first</em> incoming neighbor for a request, replies will not reliably find their way back to the initiator. 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>Data structures worth having</h2> 
+        <table> 
+          <thead> 
+            <tr> 
+              <th>Structure</th> 
+              <th>What it stores</th> 
+              <th>Why it matters</th> 
+            </tr> 
+          </thead> 
+          <tbody> 
+            <tr> 
+              <td><code>PeerRegistry</code></td> 
+              <td>nodeId → host, port, machine name</td> 
+              <td>Lets any node know how to contact others and supports join/leave bookkeeping.</td> 
+            </tr> 
+            <tr> 
+              <td><code>AdjacencyState</code></td> 
+              <td>Current neighbor graph or local neighbor list</td> 
+              <td>Used for connection creation, flooding, and topology updates.</td> 
+            </tr> 
+            <tr> 
+              <td><code>VisibleFiles</code></td> 
+              <td>The contents of <code>F_i</code></td> 
+              <td>Defines what the node may share and what counts as local success.</td> 
+            </tr> 
+            <tr> 
+              <td><code>SeenRequests</code></td> 
+              <td>Set or map keyed by request ID</td> 
+              <td>Enforces “forward at most once” and prevents flooding loops.</td> 
+            </tr> 
+            <tr> 
+              <td><code>ReversePathTable</code></td> 
+              <td>request ID → parent neighbor</td> 
+              <td>Routes replies back to the search originator.</td> 
+            </tr> 
+            <tr> 
+              <td><code>InFlightTransfers</code></td> 
+              <td>Current uploads/downloads</td> 
+              <td>Needed for graceful departure and transfer cleanup.</td> 
+            </tr> 
+            <tr> 
+              <td><code>SearchResults</code></td> 
+              <td>Replies collected by the initiator before timeout</td> 
+              <td>Used to show the tuple list the user chooses from.</td> 
+            </tr> 
+          </tbody> 
+        </table> 
+      </section> 
+      <section class="section"> 
+        <h2>Join and departure design hints</h2> 
+        <div class="triptych"> 
+          <div class="card"> 
+            <h3>Join</h3> 
+            <ul> 
+              <li>New node contacts a known existing node.</li> 
+              <li>Both sides update the registry and adjacency state.</li> 
+              <li>Establish the new neighbor socket immediately.</li> 
+              <li>Make sure the rest of the overlay eventually learns the update.</li> 
+            </ul> 
+          </div> 
+          <div class="card"> 
+            <h3>Graceful leave</h3> 
+            <ul> 
+              <li>Mark the node as <strong>departing</strong>.</li> 
+              <li>Stop answering file searches positively.</li> 
+              <li>Wait until all active transfers finish.</li> 
+              <li>Then close neighbor sockets and propagate topology updates.</li> 
+            </ul> 
+          </div> 
+          <div class="card"> 
+            <h3>Bonus leave logic</h3> 
+            <ul> 
+              <li>Estimate whether your departure partitions the graph.</li> 
+              <li>Pick one neighbor from each would-be component.</li> 
+              <li>Ask them to form a ring before you leave.</li> 
+              <li>Document the algorithm carefully if you attempt it.</li> 
+            </ul> 
+          </div> 
+        </div> 
+        <div class="callout"> <strong>Minimal but solid strategy:</strong> make topology updates versioned and idempotent. If nodes receive the same update twice, they should not break. 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>Likely failure modes</h2> 
+        <div class="pitfall-grid"> 
+          <div class="card"> 
+            <h3>Duplicate TCP links</h3> 
+            <p>Happens when both endpoints attempt to connect to each other at the same time without a deterministic rule.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Infinite flooding</h3> 
+            <p>Happens when request IDs are not unique or duplicates are not suppressed immediately.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Broken reply routing</h3> 
+            <p>Happens when a node does not remember the first incoming neighbor for a request.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Stale search state</h3> 
+            <p>Happens when request records never expire. The assignment explicitly says not to keep this state around for too long.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Bad message parsing</h3> 
+            <p>Happens when the implementation assumes TCP preserves message boundaries.</p> 
+          </div> 
+          <div class="card"> 
+            <h3>Unsafe node departure</h3> 
+            <p>Happens when a node leaves during an upload/download or still answers new searches while shutting down.</p> 
+          </div> 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>A strong design document structure</h2> 
+        <ol> 
+          <li><strong>System overview.</strong> What processes run, where they run, and how they are identified.</li> 
+          <li><strong>Module layout.</strong> Separate connection management, search, file transfer, topology state, CLI, and logging.</li> 
+          <li><strong>Data structures.</strong> Explain every shared map/table and when entries are inserted or removed.</li> 
+          <li><strong>Message protocol.</strong> Define each message type and every field it carries.</li> 
+          <li><strong>Initial overlay creation.</strong> Explain the connectivity check and concurrent connection protocol.</li> 
+          <li><strong>Search and reply routing.</strong> Explain duplicate suppression, hop-count logic, timers, and late-reply behavior.</li> 
+          <li><strong>File transfer.</strong> Explain download setup, transfer termination, and <code>F_i</code> updates.</li> 
+          <li><strong>Join and leave.</strong> Explain topology updates, graceful departure, and cleanup.</li> 
+          <li><strong>Performance logging.</strong> Explain how you record chosen hop-count and reply latency.</li> 
+          <li><strong>AI-use disclosure.</strong> Separate human-written, AI-assisted, and AI-generated code honestly.</li> 
+        </ol> 
+      </section> 
+      <section class="section"> 
+        <h2>What to log for the required data collection</h2> 
+        <table> 
+          <thead> 
+            <tr> 
+              <th>Event</th> 
+              <th>What to record</th> 
+            </tr> 
+          </thead> 
+          <tbody> 
+            <tr> 
+              <td>Search started</td> 
+              <td>requestId, initiating node, filename, initial hop-count, start timestamp</td> 
+            </tr> 
+            <tr> 
+              <td>Each reply arrival</td> 
+              <td>requestId, replying node, file name, elapsed time from initiator start</td> 
+            </tr> 
+            <tr> 
+              <td>Search success round</td> 
+              <td>The hop-count value that produced at least one valid reply</td> 
+            </tr> 
+            <tr> 
+              <td>Download chosen</td> 
+              <td>Selected tuple, source node, transfer start/end times, bytes copied</td> 
+            </tr> 
+          </tbody> 
+        </table> 
+        <div class="callout good"> <strong>Simple rule:</strong> every log line should help answer either “was the protocol correct?” or “what timing/hop-count did the assignment ask us to report?” 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>Suggested implementation order</h2> 
+        <div class="cards"> 
+          <div class="card"> 
+            <div class="step-number">
+               1 
+            </div> 
+            <p>Build a tiny framed messaging library over TCP.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               2 
+            </div> 
+            <p>Implement node registry loading and adjacency parsing.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               3 
+            </div> 
+            <p>Implement connected-graph verification and document the algorithm.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               4 
+            </div> 
+            <p>Implement concurrent overlay creation with duplicate-connection prevention.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               5 
+            </div> 
+            <p>Implement local file lookup and file-list management.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               6 
+            </div> 
+            <p>Implement search flooding with duplicate suppression.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               7 
+            </div> 
+            <p>Implement reverse-path reply forwarding and initiator timers.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               8 
+            </div> 
+            <p>Implement file download over a separate socket or explicit transfer mode.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               9 
+            </div> 
+            <p>Implement join and graceful leave.</p> 
+          </div> 
+          <div class="card"> 
+            <div class="step-number">
+               10 
+            </div> 
+            <p>Add logging, cleanup, demo scripts, and only then chase bonus points.</p> 
+          </div> 
+        </div> 
+      </section> 
+      <section class="section"> 
+        <h2>AI-usage disclosure template</h2> 
+        <p>You are required to disclose what AI helped with. Keep it simple and honest.</p> 
+        <pre>AI Usage Statement
+------------------
+Written solely by me:
+- [list files/modules]
+
+Started as AI-generated and then refined by me:
+- [list files/modules and what you changed]
+
+Entirely AI-generated:
+- [list files/modules, if any]
+
+I confirm that I understand and can explain every line in the submitted code.</pre> 
+      </section> 
+      <section class="section"> 
+        <h2>Final checklist before you submit or demo</h2> 
+        <div class="check-grid"> 
+          <div class="card"> 
+            <h3>Correctness</h3> 
+            <ul> 
+              <li>One node per machine.</li> 
+              <li>No duplicate forwarding of search requests.</li> 
+              <li>Reply routing works from matches back to initiator.</li> 
+              <li>Late replies are ignored.</li> 
+              <li>Graceful leave waits for transfers to finish.</li> 
+            </ul> 
+          </div> 
+          <div class="card"> 
+            <h3>Presentation</h3> 
+            <ul> 
+              <li>Your design document names modules and message formats clearly.</li> 
+              <li>Your demo shows overlay creation, a successful search, and a file transfer.</li> 
+              <li>Your logs show the chosen hop-count and reply latencies.</li> 
+              <li>Your AI-use statement is complete and honest.</li> 
+            </ul> 
+          </div> 
+        </div> 
+        <p class="footer-note"> <strong>Bottom line:</strong> the best submissions will not look like giant monolithic programs. They will look like a clean distributed system: deliberate message types, bounded state, clear concurrency choices, and evidence that the student understands why the protocol works. </p> 
+      </section> 
+    </main>  
+  </body>
+</html>
